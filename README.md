@@ -125,7 +125,7 @@ struct GPIOData data[256];  // Preprocessed set/clr to be written to GPIO
 
 const struct GPIOData *start = data;
 const struct GPIOData *end = start + 256;
-for (const uint32_t *it = start; it < end; ++it) {
+for (const struct GPIOData *it = start; it < end; ++it) {
     *gpio_set_register = it->set;
     *gpio_clr_register = it->clr;
 }
