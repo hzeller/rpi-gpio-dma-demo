@@ -245,9 +245,9 @@ void run_cpu_from_memory_masked() {
   const uint32_t *start = gpio_data;
   const uint32_t *end   = start + n;
   for (;;) {
-    for (const uint32_t *run = start; run < end; ++run) {
-      if (( *run & mask) != 0) *set_reg =  *run & mask;
-      if ((~*run & mask) != 0) *clr_reg = ~*run & mask;
+    for (const uint32_t *it = start; it < end; ++it) {
+      if (( *it & mask) != 0) *set_reg =  *it & mask;
+      if ((~*it & mask) != 0) *clr_reg = ~*it & mask;
     }
   }
 
@@ -286,9 +286,9 @@ void run_cpu_from_memory_set_reset() {
   const struct GPIOData *start = gpio_data;
   const struct GPIOData *end = start + n;
   for (;;) {
-    for (const struct GPIOData *run = start; run < end; ++run) {
-      *set_reg = run->set;
-      *clr_reg = run->clr;
+    for (const struct GPIOData *it = start; it < end; ++it) {
+      *set_reg = it->set;
+      *clr_reg = it->clr;
     }
   }
 
