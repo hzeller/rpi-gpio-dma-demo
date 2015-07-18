@@ -69,7 +69,7 @@ for (;;) {
 The resulting output wave on the Raspberry Pi 1 of **22.7Mhz**, the Raspberry Pi 2
 reaches **41.7Mhz**:
 
-Raspberery Pi 1              | Raspberry Pi 2
+Raspberry Pi 1               | Raspberry Pi 2
 -----------------------------|-------------------------------
 ![](img/rpi1-direct-loop.png)|![](img/rpi2-direct-loop.png)
 
@@ -99,7 +99,7 @@ for (const uint32_t *it = start; it < end; ++it) {
 Rasberry Pi 2 is unimpressed and outputs in the same speed as writing
 directly, Raspberry Pi 1 takes a performance hit and drops to 14.7Mhz:
 
-Raspberery Pi 1                      | Raspberry Pi 2
+Raspberry Pi 1                       | Raspberry Pi 2
 -------------------------------------|-------------------------------
 ![](img/rpi1-cpu-mem-word-masked.png)|![](img/rpi2-cpu-mem-word-masked.png)
 
@@ -136,7 +136,7 @@ The Raspberry Pi 2 has the same high speed as in the previous examples, but
 Raspberry Pi 1 can digest the prepared data faster and gets up to 20.8Mhz
 out of this (compared to the 14.7Mhz we got with masked writing):
 
-Raspberery Pi 1                  | Raspberry Pi 2
+Raspberry Pi 1                   | Raspberry Pi 2
 ---------------------------------|-------------------------------
 ![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)
 
@@ -232,7 +232,7 @@ takes about 100ns after the set operation until the clear operation arrives - bu
 that then is lasting much longer. This is probably due some extra time needed when
 switching between control blocks (even though the 'next' control block is exactly the same):
 
-Raspberery Pi 1                    | Raspberry Pi 2
+Raspberry Pi 1                     | Raspberry Pi 2
 -----------------------------------|-------------------------------
 ![](img/rpi1-dma-one-op-per-cb.png)|![](img/rpi2-dma-one-op-per-cb.png)
 
@@ -289,7 +289,7 @@ the 8 byte stride skip that we had in the previous example.
 Now the 'low' part of the pulse is even longer than before, apparently the
 minus 16 Byte stride takes its sweet time even though we don't switch between control blocks:
 
-Raspberery Pi 1                      | Raspberry Pi 2
+Raspberry Pi 1                       | Raspberry Pi 2
 -------------------------------------|-------------------------------
 ![](img/rpi1-dma-multi-op-per-cb.png)|![](img/rpi2-dma-multi-op-per-cb.png)
 
