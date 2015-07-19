@@ -36,10 +36,8 @@
 // --- General, Pi-specific setup.
 #if PI_VERSION == 2
 #  define PERI_BASE BCM2709_PI2_PERI_BASE
-#  define MEM_FLAG 0xc
 #else
 #  define PERI_BASE BCM2708_PI1_PERI_BASE
-#  define MEM_FLAG 0x4
 #endif
 
 #define PAGE_SIZE 4096
@@ -52,6 +50,12 @@
 
 // ---- Memory mappping defines
 #define BUS_TO_PHYS(x) ((x)&~0xC0000000)
+
+// ---- Memory allocating defines
+// https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+#define MEM_FLAG_DIRECT           (1 << 2)
+#define MEM_FLAG_COHERENT         (2 << 2)
+#define MEM_FLAG_L1_NONALLOCATING (MEM_FLAG_DIRECT | MEM_FLAG_COHERENT)
 
 // ---- DMA specific defines
 #define DMA_CHANNEL       5   // That usually is free.
@@ -125,7 +129,8 @@ static struct UncachedMemBlock UncachedMemBlock_alloc(size_t size) {
 
   struct UncachedMemBlock result;
   result.size = size;
-  result.mem_handle = mem_alloc(mbox_fd, size, PAGE_SIZE, MEM_FLAG);
+  result.mem_handle = mem_alloc(mbox_fd, size, PAGE_SIZE,
+                                MEM_FLAG_L1_NONALLOCATING);
   result.bus_addr = mem_lock(mbox_fd, result.mem_handle);
   result.mem = mapmem(BUS_TO_PHYS(result.bus_addr), size);
   fprintf(stderr, "Alloc: %6d bytes;  %p (bus=0x%08x, phys=0x%08x)\n",
