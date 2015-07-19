@@ -140,6 +140,19 @@ Raspberry Pi 1                   | Raspberry Pi 2
 ---------------------------------|-------------------------------
 ![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)
 
+
+### Reading prepared set/clr from UNCACHED memory
+
+`sudo ./gpio-dma-test 4`
+
+This next example is not useful in real life, it is only meant to better
+understand the performance impact of accessing memory that does not go
+through a cache (L1 or L2).
+
+The DMA subsystem, which we are going to explore in the next examples, has to
+read from physical memory, as it cannot use the caches (or can it ? Somewhere
+I read that it can make at least use of L2 cache ?).
+
 ## Using DMA to write to GPIO
 
 Using the Direct Memory Access (DMA) subsystem allows to free the CPU and
@@ -168,7 +181,7 @@ features for both examples.
 
 ### DMA: using one Control Block per GPIO operation
 
-`sudo ./gpio-dma-test 4`
+`sudo ./gpio-dma-test 5`
 
 With DMA, we can't do any data manipulation operations (such as masking) at the time the
 data is written, so just like in the last CPU example, we have to prepare the source data
@@ -239,7 +252,7 @@ Raspberry Pi 1                     | Raspberry Pi 2
 
 ### DMA: multiple GPIO operations per Control Block
 
-`sudo ./gpio-dma-test 5`
+`sudo ./gpio-dma-test 6`
 
 One of the obvious down-sides of the previous example is, that we have to set up one
 DMA control block for each write operation which is a lot of memory overhead. Does it

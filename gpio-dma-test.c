@@ -296,6 +296,52 @@ void run_cpu_from_memory_set_reset() {
 }
 
 /*
+ * Read data from UNCACHED memory with set/reset.
+ * The exact same as the previous example, but different memory to read
+ * from: no L1 or L2 cache help with perfomance accessing the memory.
+ * This is not useful for anything in real life, but helps to better
+ * understand (slow) DMA performance.
+ */
+void run_cpu_from_uncached_memory_set_reset() {
+  // Prepare GPIO
+  volatile uint32_t *gpio_port = mmap_bcm_register(GPIO_REGISTER_BASE);
+  initialize_gpio_for_output(gpio_port, TOGGLE_GPIO);
+  volatile uint32_t *set_reg = gpio_port + (GPIO_SET_OFFSET / sizeof(uint32_t));
+  volatile uint32_t *clr_reg = gpio_port + (GPIO_CLR_OFFSET / sizeof(uint32_t));
+
+  // Layout of our input data. The values are pre-expanded to set and clr.
+  struct GPIOData {
+    uint32_t set;
+    uint32_t clr;
+  };
+
+  // Prepare data.
+  const int n = 256;
+  struct GPIOData *gpio_data;
+  struct UncachedMemBlock memblock
+    = UncachedMemBlock_alloc(n * sizeof(*gpio_data));
+  gpio_data = (struct GPIOData*) memblock.mem;
+  for (int i = 0; i < n; ++i) {
+    gpio_data[i].set = (1<<TOGGLE_GPIO);
+    gpio_data[i].clr = (1<<TOGGLE_GPIO);
+  }
+
+  // Do it. Endless loop: reading, writing.
+  printf("4) CPU: reading prepared set/clr from UNCACHED memory, write to GPIO.\n"
+         "== Press Ctrl-C to exit.\n");
+  const struct GPIOData *start = gpio_data;
+  const struct GPIOData *end = start + n;
+  for (;;) {
+    for (const struct GPIOData *it = start; it < end; ++it) {
+      *set_reg = it->set;
+      *clr_reg = it->clr;
+    }
+  }
+
+  UncachedMemBlock_free(&memblock); // (though never reached due to Ctrl-C)
+}
+
+/*
  * Writing data via DMA to GPIO. We do that in a 2D write with a stride that
  * skips the gap between the GPIO registers. Each of these GPIO operations
  * is described as a single control block.
@@ -348,7 +394,7 @@ void run_dma_single_transfer_per_cb() {
   // Now set the 'next' block up, which it ourself. So essentially loop back.
   cb->next   = UncachedMemBlock_to_physical(&cb_memblock, cb);
 
-  printf("4) DMA: Single control block per set/reset GPIO\n"
+  printf("5) DMA: Single control block per set/reset GPIO\n"
          "== Press <RETURN> to exit (with CTRL-C DMA keeps going).");
 
   char *dmaBase = mmap_bcm_register(DMA_BASE);
@@ -439,7 +485,7 @@ void run_dma_multi_transfer_per_cb() {
   // Now set the 'next' block up, which it ourself. So essentially loop back.
   cb->next   = UncachedMemBlock_to_physical(&cb_memblock, cb);
 
-  printf("5) DMA: Sending a sequence of set/clear with one DMA control block "
+  printf("6) DMA: Sending a sequence of set/clear with one DMA control block "
          "and negative destination stride.\n"
          "== Press <RETURN> to exit (with CTRL-C DMA keeps going).");
 
@@ -469,16 +515,17 @@ void run_dma_multi_transfer_per_cb() {
 }
 
 static int usage(const char *prog) {
-  fprintf(stderr, "Usage %s [1...5]\n", prog);
+  fprintf(stderr, "Usage %s [1...6]\n", prog);
   fprintf(stderr, "Give number of test operation as argument to %s\n", prog);
   fprintf(stderr, "Test operation\n"
           "== Baseline tests, using CPU directly ==\n"
           "1 - CPU: Writing to GPIO directly in tight loop\n"
           "2 - CPU: reading word from memory, write masked to GPIO set/clr.\n"
           "3 - CPU: reading prepared set/clr from memory, write to GPIO.\n"
+          "4 - CPU: reading prepared set/clr from UNCACHED memory, write to GPIO.\n"
           "\n== DMA tests, using DMA to pump data to ==\n"
-          "4 - DMA: Single control block per set/reset GPIO\n"
-          "5 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.\n");
+          "5 - DMA: Single control block per set/reset GPIO\n"
+          "6 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.\n");
   return 1;
 }
 
@@ -498,9 +545,12 @@ int main(int argc, char *argv[]) {
     run_cpu_from_memory_set_reset();
     break;
   case 4:
-    run_dma_single_transfer_per_cb();
+    run_cpu_from_uncached_memory_set_reset();
     break;
   case 5:
+    run_dma_single_transfer_per_cb();
+    break;
+  case 6:
     run_dma_multi_transfer_per_cb();
     break;
   default:
