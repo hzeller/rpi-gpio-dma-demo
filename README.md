@@ -14,21 +14,22 @@ variable when compiling
      PI_VERSION=1 make
      PI_VERSION=2 make
 
-The resulting program gives you a set of 5 experiments to conduct. By default, it toggles
+The resulting program gives you a set of 6 experiments to conduct. By default, it toggles
 GPIO 14 (which is pin 8 on the Raspberry Pi header).
 
 ```
-Usage ./gpio-dma-test [1...5]
+Usage ./gpio-dma-test [1...6]
 Give number of test operation as argument to ./gpio-dma-test
 Test operation
 == Baseline tests, using CPU directly ==
 1 - CPU: Writing to GPIO directly in tight loop
 2 - CPU: reading word from memory, write masked to GPIO set/clr.
 3 - CPU: reading prepared set/clr from memory, write to GPIO.
+4 - CPU: reading prepared set/clr from UNCACHED memory, write to GPIO.
 
 == DMA tests, using DMA to pump data to ==
-4 - DMA: Single control block per set/reset GPIO
-5 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.
+5 - DMA: Single control block per set/reset GPIO
+6 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.
 ```
 
 To understand the details, you want to read [BCM2835 ARM Peripherals][BCM2835-doc], an excellent
@@ -145,13 +146,31 @@ Raspberry Pi 1                   | Raspberry Pi 2
 
 `sudo ./gpio-dma-test 4`
 
-This next example is not useful in real life, it is only meant to better
-understand the performance impact of accessing memory that does not go
+This next example is not useful in real life, but it helps to better
+understand the performance impact of accessing memory that does *not* go
 through a cache (L1 or L2).
 
 The DMA subsystem, which we are going to explore in the next examples, has to
 read from physical memory, as it cannot use the caches (or can it ? Somewhere
 I read that it can make at least use of L2 cache ?).
+
+The example is the same as before: reading pre-processed set/clr values from
+memory and writing them to GPIO. Only the type of memory is different.
+
+##### Result
+
+The speed is significantly reduced - it is very slow to read from unached
+memory (a testament of how fast CPUs are these days or slow DRAM actually
+is).
+
+One interesting finding is, that the Raspberry Pi 2 is actually significantly
+slower than the Raspberry Pi 1. Maybe the makers were relying more on various
+caches and choose to equip the machine with slower memory to keep the price while
+increasing memory ?
+
+Raspberry Pi 1                            | Raspberry Pi 2
+------------------------------------------|-------------------------------
+![](img/rpi1-cpu-uncached-mem-set-clr.png)|![](img/rpi2-cpu-uncached-mem-set-clr.png)
 
 ## Using DMA to write to GPIO
 
@@ -234,7 +253,8 @@ Note, all this memory needs to be locked into RAM.
 
 ##### Result
 First thing we notice is how slow things are in comparison to the write from the CPU.
-Also, the *Raspberry Pi 2 is slower* than the Raspberry Pi 1.
+As found out in the uncached CPU example, we see the influence of slower memory in the
+Raspberry Pi 2 here as well.
 
 The live scope shows that the output has quite a bit of jitter, so DMA alone will not give
 you very reliable timing, you always have to combine that with PWM/PCM gating if you need
@@ -298,7 +318,10 @@ Similar to the previous example, the output has quite some jitter.
 
 It is interesting, that the positive pulse is shorter (about 50ns) than in the previous example.
 It suggests that writing the data in sequence with 8 dead bytes is faster than
-the 8 byte stride skip that we had in the previous example.
+the 8 byte stride skip that we had in the previous example. Also it means that the DMA probably
+has a small cache for the 16 byte block, as it emits that part faster than it can read from the
+uncached memory.
+
 Now the 'low' part of the pulse is even longer than before, apparently the
 minus 16 Byte stride takes its sweet time even though we don't switch between control blocks:
 
@@ -315,14 +338,15 @@ Raspberry Pi 1                       | Raspberry Pi 2
      read from memory.
    - Raspberry Pi 1 is in the 20Mhz range for direct and prepared output and sligtly
      slower if it has to do the mask-operation first.
-   - DMA is slow. It only makes sense if you want to output data in a slower pace or
-     really need to relieve the CPU from continuous updates.
+     - DMA is slow because it has to read from unached memory. It only makes sense if you want
+     to output data in a slower pace or really need to relieve the CPU from continuous updates.
    - Using a single control block per output operation is slightly faster than doing
      multiple, but is very inefficient in use of memory (10x the actual payload).
    - Using the stride in 2D DMA seems to be _slower_ than actually writing the same number
      of bytes ?
    - The stride operation seems to take extra time as time going on to next DMA control blocks.
-   - DMA on Rasbperry Pi 2 is slightly *slower* than on Raspberry Pi 1
+   - DMA on Rasbperry Pi 2 is slightly *slower* than on Raspberry Pi 1, apparently because
+     Raspberry Pi 2 DRAM is slower ?
 
 [BCM2835-doc]: https://www.raspberrypi.org/wp-content/uploads/2012/02/BCM2835-ARM-Peripherals.pdf
 [PiBits]: https://github.com/richardghirst/PiBits
