@@ -8,11 +8,11 @@ I provide the code in [gpio-dma-test.c](./gpio-dma-test.c) to the public domain.
 use DMA you need the mailbox implementation; for that note the Broadcom copyright header
 with permissive license in [mailbox.h](./mailbox.h).
 
-You can compile this for Raspberry Pi 1 or 2 by passing the `PI_VERSION`
+You can compile this for Raspberry Pi 1 or 2,3 by passing the `PI_VERSION`
 variable when compiling
 
      PI_VERSION=1 make
-     PI_VERSION=2 make
+     PI_VERSION=2 make  # works for Pi 2 and 3
 
 The resulting program gives you a set of 6 experiments to conduct. By default, it toggles
 GPIO 14 (which is pin 8 on the Raspberry Pi header).
@@ -68,12 +68,16 @@ for (;;) {
 
 ##### Result
 The resulting output wave on the Raspberry Pi 1 of **22.7Mhz**, the Raspberry Pi 2
-reaches **41.7Mhz**:
+reaches **41.7Mhz** and the Raspberry Pi 3 **65.8 Mhz**.
 
-Raspberry Pi 1               | Raspberry Pi 2
------------------------------|-------------------------------
-![](img/rpi1-direct-loop.png)|![](img/rpi2-direct-loop.png)
+Raspberry Pi 1               | Raspberry Pi 2                | Raspberry Pi 3
+-----------------------------|-------------------------------|------------------------------
+![](img/rpi1-direct-loop.png)|![](img/rpi2-direct-loop.png)  |![](img/rpi3-direct-loop.png)
 
+The limited resolution in the 100ns range of the scope did not read the frequency correctly
+for the Pi 3 (so it only shows 58.8Mhz above) but if we zoom in, we see the 65.8Mhz
+
+![](img/rpi3-direct-loop-zoom.png)
 
 ### Reading Word from memory, write masked set/clr
 
@@ -97,12 +101,12 @@ for (const uint32_t *it = start; it < end; ++it) {
 ```
 
 ##### Result
-Rasberry Pi 2 is unimpressed and outputs in the same speed as writing
+Rasberry Pi 2 and Pi 3 are unimpressed and outputs in the same speed as writing
 directly, Raspberry Pi 1 takes a performance hit and drops to 14.7Mhz:
 
-Raspberry Pi 1                       | Raspberry Pi 2
--------------------------------------|-------------------------------
-![](img/rpi1-cpu-mem-word-masked.png)|![](img/rpi2-cpu-mem-word-masked.png)
+Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3
+-------------------------------------|-------------------------------------|-----------------------------
+![](img/rpi1-cpu-mem-word-masked.png)|![](img/rpi2-cpu-mem-word-masked.png)|![](img/rpi3-cpu-mem-word-masked.png)
 
 ### Reading prepared set/clr from memory
 
@@ -133,13 +137,13 @@ for (const struct GPIOData *it = start; it < end; ++it) {
 ```
 
 ##### Result
-The Raspberry Pi 2 has the same high speed as in the previous examples, but
+The Raspberry Pi 2 and Pi 3 have the same high speed as in the previous examples, but
 Raspberry Pi 1 can digest the prepared data faster and gets up to 20.8Mhz
 out of this (compared to the 14.7Mhz we got with masked writing):
 
-Raspberry Pi 1                   | Raspberry Pi 2
----------------------------------|-------------------------------
-![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)
+Raspberry Pi 1                   | Raspberry Pi 2                  | Raspberry Pi 3
+---------------------------------|---------------------------------|-------------------------------
+![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)|![](img/rpi3-cpu-mem-set-clr.png)
 
 
 ### Reading prepared set/clr from UNCACHED memory
@@ -163,14 +167,15 @@ The speed is significantly reduced - it is very slow to read from unached
 memory (a testament of how fast CPUs are these days or slow DRAM actually
 is).
 
-One interesting finding is, that the Raspberry Pi 2 is actually significantly
+One interesting finding is, that the Raspberry Pi 2 and Pi 3 both are actually significantly
 slower than the Raspberry Pi 1. Maybe the makers were relying more on various
 caches and choose to equip the machine with slower memory to keep the price while
-increasing memory ?
+increasing memory ? At least the Pi 3 is faster than the 2, so the relative order there is
+preserved.
 
-Raspberry Pi 1                            | Raspberry Pi 2
-------------------------------------------|-------------------------------
-![](img/rpi1-cpu-uncached-mem-set-clr.png)|![](img/rpi2-cpu-uncached-mem-set-clr.png)
+Raspberry Pi 1                            | Raspberry Pi 2                           | Raspberry Pi 3
+------------------------------------------|------------------------------------------|---------
+![](img/rpi1-cpu-uncached-mem-set-clr.png)|![](img/rpi2-cpu-uncached-mem-set-clr.png)|![](img/rpi3-cpu-uncached-mem-set-clr.png)
 
 ## Using DMA to write to GPIO
 
@@ -254,7 +259,7 @@ Note, all this memory needs to be locked into RAM.
 ##### Result
 First thing we notice is how slow things are in comparison to the write from the CPU.
 As found out in the uncached CPU example, we see the influence of slower memory in the
-Raspberry Pi 2 here as well.
+Raspberry Pi 2 and Pi 3 here as well. Raspberry Pi 2 and 3 are exactly the same speed here.
 
 The live scope shows that the output has quite a bit of jitter, so DMA alone will not give
 you very reliable timing, you always have to combine that with PWM/PCM gating if you need
@@ -265,9 +270,9 @@ takes about 100ns after the set operation until the clear operation arrives - bu
 that then is lasting much longer. This is probably due some extra time needed when
 switching between control blocks (even though the 'next' control block is exactly the same):
 
-Raspberry Pi 1                     | Raspberry Pi 2
------------------------------------|-------------------------------
-![](img/rpi1-dma-one-op-per-cb.png)|![](img/rpi2-dma-one-op-per-cb.png)
+Raspberry Pi 1                     | Raspberry Pi 2                    | Raspberry Pi 3
+-----------------------------------|-----------------------------------|-----------------------
+![](img/rpi1-dma-one-op-per-cb.png)|![](img/rpi2-dma-one-op-per-cb.png)|![](img/rpi3-dma-one-op-per-cb.png)
 
 
 ### DMA: multiple GPIO operations per Control Block
@@ -312,7 +317,8 @@ As usual, if we want to do that endlessly, we can link that control block back t
 
 ##### Result
 Again, the Raspberry Pi 2 is slightly slower than the Raspberry Pi 1. In general, this method is
-even _slower_ than one control block per data item.
+even _slower_ than one control block per data item. And again, Raspberry Pi 3 shows the same
+speed as Raspberry Pi 2.
 
 Similar to the previous example, the output has quite some jitter.
 
@@ -325,9 +331,9 @@ uncached memory.
 Now the 'low' part of the pulse is even longer than before, apparently the
 minus 16 Byte stride takes its sweet time even though we don't switch between control blocks:
 
-Raspberry Pi 1                       | Raspberry Pi 2
--------------------------------------|-------------------------------
-![](img/rpi1-dma-multi-op-per-cb.png)|![](img/rpi2-dma-multi-op-per-cb.png)
+Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3
+-------------------------------------|-------------------------------------|----------------------
+![](img/rpi1-dma-multi-op-per-cb.png)|![](img/rpi2-dma-multi-op-per-cb.png)|![](img/rpi3-dma-multi-op-per-cb.png)
 
 # Conclusions
 
@@ -335,7 +341,7 @@ Raspberry Pi 1                       | Raspberry Pi 2
 
    - On output via the CPU, Raspberry Pi 2 maintains the same
      impressive speed of **41.7Mhz** independent if written directly from code or
-     read from memory.
+     read from memory. The Raspberry Pi 3 even reaches **65.8Mhz**
    - Raspberry Pi 1 is in the 20Mhz range for direct and prepared output and sligtly
      slower if it has to do the mask-operation first.
      - DMA is slow because it has to read from unached memory. It only makes sense if you want
