@@ -1,5 +1,5 @@
-GPIO Performance using CPU and DMA on the Raspberry Pi
-=================================================
+GPIO Speed using CPU and DMA on the Raspberry Pi
+================================================
 
 Experiments to measure speed of various ways to output data to
 GPIO. Also convenient code snippets to help get you started with GPIO.
@@ -8,7 +8,7 @@ I provide the code in [gpio-dma-test.c](./gpio-dma-test.c) to the public domain.
 use DMA you need the mailbox implementation; for that note the Broadcom copyright header
 with permissive license in [mailbox.h](./mailbox.h).
 
-You can compile this for Raspberry Pi 1 or 2,3 by passing the `PI_VERSION`
+You can compile this for Raspberry Pi 1 or 2 and 3 by passing the `PI_VERSION`
 variable when compiling
 
      PI_VERSION=1 make
@@ -42,15 +42,15 @@ in which we toggle the output of a pin (see `TOGGLE_GPIO` in the source). In rea
 the data would certainly be slightly more useful :)
 
 The pictures in these experiments show the output wave-form on the given pin for the
-Raspberry Pi 1 and 2. These are screen-shots straight from an oscilloscope, the time-base
+various Raspberry Pis. These are screen-shots straight from an oscilloscope, the time-base
 is with 100ns the same for all measurements to be able to compare them easily.
 
-All measurements were done on unmodified Raspberry Pis in their respective default clock speed.
+All measurements were done on unmodified Pis in their respective default clock speed with a default minimal Raspian operating-system.
 
 ## Writing from CPU to GPIO
 
 The most common way to get data out on the GPIO port is using the CPU to send
-the data. Let's do some measurements how the Raspberry Pi 1 and 2 perform here.
+the data. Let's do some measurements how the Pis perform here.
 
 ### Direct Output Loop to GPIO
 
@@ -101,7 +101,7 @@ for (const uint32_t *it = start; it < end; ++it) {
 ```
 
 ##### Result
-Rasberry Pi 2 and Pi 3 are unimpressed and outputs in the same speed as writing
+Raspberry Pi 2 and Pi 3 are unimpressed and output in the same speed as writing
 directly, Raspberry Pi 1 takes a performance hit and drops to 14.7Mhz:
 
 Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3
@@ -115,8 +115,8 @@ Raspberry Pi 1                       | Raspberry Pi 2                      | Ras
 This would be a bit more unusal way to prepare and write data: break out the
 set and clr bits beforehand and store in memory before writing them to GPIO.
 It uses twice as much memory per operation.
-It does help the Raspberry Pi 1 to be as fast as possible writing from memory though,
-while there is no additional advantage for the Raspberry Pi 2.
+It does help the Raspberry Pi 1 to be as fast as possible writing from memory
+though, while there is no additional advantage for the Raspberry Pi 2 or 3.
 
 Primarily, this is a good preparation to understand the way we have to send data with DMA.
 
@@ -193,7 +193,7 @@ using DMA (which is not very impressive as we'll see).
 In order to use DMA, the DMA controller needs access to the actual memory bus address,
 as it can't deal with virtual memory (which means as well: it needs to be in physical
 memory and can't be swapped). There are various ways to allocate that memeory and do
-the mapping, but it looks like a reliable way for version 1 and 2 PIs is to use
+the mapping, but it looks like a reliable way for all PIs is to use
 the `/dev/vcio` interface provided by the Pi kernel; we are using
 a [mailbox implementation][RPI-mbox] provided in an
 [raspberrypi/userland][RPI-userland] fft example.
@@ -259,7 +259,7 @@ Note, all this memory needs to be locked into RAM.
 ##### Result
 First thing we notice is how slow things are in comparison to the write from the CPU.
 As found out in the uncached CPU example, we see the influence of slower memory in the
-Raspberry Pi 2 and Pi 3 here as well. Raspberry Pi 2 and 3 are exactly the same speed here.
+Raspberry Pi 2 and Pi 3 here as well. The latter two show exactly the same speed.
 
 The live scope shows that the output has quite a bit of jitter, so DMA alone will not give
 you very reliable timing, you always have to combine that with PWM/PCM gating if you need
@@ -337,22 +337,21 @@ Raspberry Pi 1                       | Raspberry Pi 2                      | Ras
 
 # Conclusions
 
-**[these are preliminary conclusions; I want to see if there are ways to improve DMA]**
-
-   - On output via the CPU, Raspberry Pi 2 maintains the same
+   - On output via direct write from the CPU, Raspberry Pi 2 maintains the same
      impressive speed of **41.7Mhz** independent if written directly from code or
      read from memory. The Raspberry Pi 3 even reaches **65.8Mhz**
    - Raspberry Pi 1 is in the 20Mhz range for direct and prepared output and sligtly
      slower if it has to do the mask-operation first.
-     - DMA is slow because it has to read from unached memory. It only makes sense if you want
+   - DMA is slow because it has to read from unached memory. It only makes sense if you want
      to output data in a slower pace or really need to relieve the CPU from continuous updates.
+     (**Is that it, can DMA be faster ?** If you know how, please let me know).
    - Using a single control block per output operation is slightly faster than doing
      multiple, but is very inefficient in use of memory (10x the actual payload).
    - Using the stride in 2D DMA seems to be _slower_ than actually writing the same number
      of bytes ?
    - The stride operation seems to take extra time as time going on to next DMA control blocks.
-   - DMA on Rasbperry Pi 2 is slightly *slower* than on Raspberry Pi 1, apparently because
-     Raspberry Pi 2 DRAM is slower ?
+   - DMA on Rasbperry Pi 2 and 3 is slightly *slower* than on Raspberry Pi 1, maybe because the
+     DRAM is slower ?
 
 [BCM2835-doc]: https://www.raspberrypi.org/wp-content/uploads/2012/02/BCM2835-ARM-Peripherals.pdf
 [PiBits]: https://github.com/richardghirst/PiBits
