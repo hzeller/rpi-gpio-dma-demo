@@ -223,12 +223,12 @@ just do a plain 1:1 memory copy from the source data to the destination register
 as the layout is a bit different than our input data: The *set* and *clr* register
 are a few bytes apart, so there is a gap between the two write operations:
 
-Addr-offset | GPIO Register          | width             | Operation
------------:|------------------------|-------------------|-------------------
-       0x1c | **set** (lower-32 bits)| 32 bits = 4 bytes | &lt;-write here
-       0x20 | *unused upper bits*    | 32 bits = 4 bytes | skip
-       0x24 | *(reserved)*           | 32 bits = 4 bytes | skip
-       0x28 | **clr** (lower-32 bits)| 32 bits = 4 bytes | &lt;-.. and here
+|Addr-offset | GPIO Register          | width             | Operation
+|-----------:|------------------------|-------------------|-------------------
+|       0x1c | **set** (lower-32 bits)| 32 bits = 4 bytes | &lt;-write here
+|       0x20 | *unused upper bits*    | 32 bits = 4 bytes | skip
+|       0x24 | *(reserved)*           | 32 bits = 4 bytes | skip
+|       0x28 | **clr** (lower-32 bits)| 32 bits = 4 bytes | &lt;-.. and here
 
 So what we are doing is to set up a DMA Control Block with a 2D operation:
 
