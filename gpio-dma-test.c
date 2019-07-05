@@ -32,12 +32,15 @@
 
 #define BCM2708_PI1_PERI_BASE  0x20000000
 #define BCM2709_PI2_PERI_BASE  0x3F000000
+#define BCM2711_PI4_PERI_BASE  0xFE000000
 
 // --- General, Pi-specific setup.
-#if PI_VERSION == 2
+#if PI_VERSION == 1
+#  define PERI_BASE BCM2708_PI1_PERI_BASE
+#elif PI_VERSION == 2 || PI_VERSION == 3
 #  define PERI_BASE BCM2709_PI2_PERI_BASE
 #else
-#  define PERI_BASE BCM2708_PI1_PERI_BASE
+#  define PERI_BASE BCM2711_PI4_PERI_BASE
 #endif
 
 #define PAGE_SIZE 4096
@@ -531,6 +534,7 @@ static int usage(const char *prog) {
           "\n== DMA tests, using DMA to pump data to ==\n"
           "5 - DMA: Single control block per set/reset GPIO\n"
           "6 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.\n");
+  fprintf(stderr, "Compiled for peripheral base 0x%08X\n", PERI_BASE);
   return 1;
 }
 

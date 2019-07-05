@@ -13,6 +13,7 @@ variable when compiling
 
      PI_VERSION=1 make
      PI_VERSION=2 make  # works for Pi 2 and 3
+     PI_VERSION=4 make  # works for Pi 4
 
 The resulting program gives you a set of 6 experiments to conduct. By default, it toggles
 GPIO 14 (which is pin 8 on the Raspberry Pi header).
@@ -47,6 +48,8 @@ is with 100ns the same for all measurements to be able to compare them easily.
 
 All measurements were done on unmodified Pis in their respective default clock speed with a default minimal Raspian operating-system.
 
+TODO: For the Pi4, there are no images yet, just some preliminary measurements. Stay tuned.
+
 ## Writing from CPU to GPIO
 
 The most common way to get data out on the GPIO port is using the CPU to send
@@ -70,9 +73,9 @@ for (;;) {
 The resulting output wave on the Raspberry Pi 1 of **22.7Mhz**, the Raspberry Pi 2
 reaches **41.7Mhz** and the Raspberry Pi 3 **65.8 Mhz**.
 
-Raspberry Pi 1               | Raspberry Pi 2                | Raspberry Pi 3
------------------------------|-------------------------------|------------------------------
-![](img/rpi1-direct-loop.png)|![](img/rpi2-direct-loop.png)  |![](img/rpi3-direct-loop.png)
+Raspberry Pi 1               | Raspberry Pi 2                | Raspberry Pi 3               | Raspberry Pi 4
+-----------------------------|-------------------------------|------------------------------|----------------
+![](img/rpi1-direct-loop.png)|![](img/rpi2-direct-loop.png)  |![](img/rpi3-direct-loop.png) | (about 131Mhz)
 
 The limited resolution in the 100ns range of the scope did not read the frequency correctly
 for the Pi 3 (so it only shows 58.8Mhz above) but if we zoom in, we see the 65.8Mhz
@@ -104,9 +107,9 @@ for (const uint32_t *it = start; it < end; ++it) {
 Raspberry Pi 2 and Pi 3 are unimpressed and output in the same speed as writing
 directly, Raspberry Pi 1 takes a performance hit and drops to 14.7Mhz:
 
-Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3
--------------------------------------|-------------------------------------|-----------------------------
-![](img/rpi1-cpu-mem-word-masked.png)|![](img/rpi2-cpu-mem-word-masked.png)|![](img/rpi3-cpu-mem-word-masked.png)
+Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3                      | Raspberry Pi 4
+-------------------------------------|-------------------------------------|-------------------------------------|----------------
+![](img/rpi1-cpu-mem-word-masked.png)|![](img/rpi2-cpu-mem-word-masked.png)|![](img/rpi3-cpu-mem-word-masked.png)|(about 131Mhz)
 
 ### Reading prepared set/clr from memory
 
@@ -141,9 +144,9 @@ The Raspberry Pi 2 and Pi 3 have the same high speed as in the previous examples
 Raspberry Pi 1 can digest the prepared data faster and gets up to 20.8Mhz
 out of this (compared to the 14.7Mhz we got with masked writing):
 
-Raspberry Pi 1                   | Raspberry Pi 2                  | Raspberry Pi 3
----------------------------------|---------------------------------|-------------------------------
-![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)|![](img/rpi3-cpu-mem-set-clr.png)
+Raspberry Pi 1                   | Raspberry Pi 2                  | Raspberry Pi 3                  | Raspberry Pi 4
+---------------------------------|---------------------------------|---------------------------------|----------------
+![](img/rpi1-cpu-mem-set-clr.png)|![](img/rpi2-cpu-mem-set-clr.png)|![](img/rpi3-cpu-mem-set-clr.png)|(about 83Mhz)
 
 
 ### Reading prepared set/clr from UNCACHED memory
@@ -173,9 +176,9 @@ caches and choose to equip the machine with slower memory to keep the price whil
 increasing memory ? At least the Pi 3 is faster than the 2, so the relative order there is
 preserved.
 
-Raspberry Pi 1                            | Raspberry Pi 2                           | Raspberry Pi 3
-------------------------------------------|------------------------------------------|---------
-![](img/rpi1-cpu-uncached-mem-set-clr.png)|![](img/rpi2-cpu-uncached-mem-set-clr.png)|![](img/rpi3-cpu-uncached-mem-set-clr.png)
+Raspberry Pi 1                            | Raspberry Pi 2                           | Raspberry Pi 3                           | Raspberry Pi 4
+------------------------------------------|------------------------------------------|------------------------------------------|----------------
+![](img/rpi1-cpu-uncached-mem-set-clr.png)|![](img/rpi2-cpu-uncached-mem-set-clr.png)|![](img/rpi3-cpu-uncached-mem-set-clr.png)|(about 2.7Mhz)
 
 ## Using DMA to write to GPIO
 
@@ -270,9 +273,9 @@ takes about 100ns after the set operation until the clear operation arrives - bu
 that then is lasting much longer. This is probably due some extra time needed when
 switching between control blocks (even though the 'next' control block is exactly the same):
 
-Raspberry Pi 1                     | Raspberry Pi 2                    | Raspberry Pi 3
------------------------------------|-----------------------------------|-----------------------
-![](img/rpi1-dma-one-op-per-cb.png)|![](img/rpi2-dma-one-op-per-cb.png)|![](img/rpi3-dma-one-op-per-cb.png)
+Raspberry Pi 1                     | Raspberry Pi 2                    | Raspberry Pi 3                    | Raspberry Pi 4
+-----------------------------------|-----------------------------------|-----------------------------------|-------------
+![](img/rpi1-dma-one-op-per-cb.png)|![](img/rpi2-dma-one-op-per-cb.png)|![](img/rpi3-dma-one-op-per-cb.png)| (about 1.82Mhz)
 
 
 ### DMA: multiple GPIO operations per Control Block
@@ -331,9 +334,9 @@ uncached memory.
 Now the 'low' part of the pulse is even longer than before, apparently the
 minus 16 Byte stride takes its sweet time even though we don't switch between control blocks:
 
-Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3
--------------------------------------|-------------------------------------|----------------------
-![](img/rpi1-dma-multi-op-per-cb.png)|![](img/rpi2-dma-multi-op-per-cb.png)|![](img/rpi3-dma-multi-op-per-cb.png)
+Raspberry Pi 1                       | Raspberry Pi 2                      | Raspberry Pi 3                      | Raspberry Pi 4
+-------------------------------------|-------------------------------------|-------------------------------------|----------------
+![](img/rpi1-dma-multi-op-per-cb.png)|![](img/rpi2-dma-multi-op-per-cb.png)|![](img/rpi3-dma-multi-op-per-cb.png)| (about 1.54Mhz)
 
 # Conclusions
 
