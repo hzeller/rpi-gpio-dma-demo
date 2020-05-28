@@ -166,7 +166,7 @@ memory and writing them to GPIO. Only the type of memory is different.
 
 ##### Result
 
-The speed is significantly reduced - it is very slow to read from unached
+The speed is significantly reduced - it is very slow to read from uncached
 memory (a testament of how fast CPUs are these days or slow DRAM actually
 is).
 
