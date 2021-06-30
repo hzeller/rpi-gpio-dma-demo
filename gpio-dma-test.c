@@ -312,7 +312,7 @@ void run_cpu_from_memory_set_reset() {
  */
 void run_cpu_from_uncached_memory_set_reset() {
   // Prepare GPIO
-  volatile uint32_t *gpio_port = mmap_bcm_register(GPIO_REGISTER_BASE);
+  volatile uint32_t *gpio_port = (uint32_t *) mmap_bcm_register(GPIO_REGISTER_BASE);
   initialize_gpio_for_output(gpio_port, TOGGLE_GPIO);
   volatile uint32_t *set_reg = gpio_port + (GPIO_SET_OFFSET / sizeof(uint32_t));
   volatile uint32_t *clr_reg = gpio_port + (GPIO_CLR_OFFSET / sizeof(uint32_t));
