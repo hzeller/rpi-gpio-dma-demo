@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,14 +34,17 @@
 #define BCM2708_PI1_PERI_BASE  0x20000000
 #define BCM2709_PI2_PERI_BASE  0x3F000000
 #define BCM2711_PI4_PERI_BASE  0xFE000000
+#define BCM2712_PI5_PERI_BASE  0x1f000d0000
 
 // --- General, Pi-specific setup.
 #if PI_VERSION == 1
 #  define PERI_BASE BCM2708_PI1_PERI_BASE
 #elif PI_VERSION == 2 || PI_VERSION == 3
 #  define PERI_BASE BCM2709_PI2_PERI_BASE
-#else
+#elif PI_VERSION == 4
 #  define PERI_BASE BCM2711_PI4_PERI_BASE
+#else
+#  define PERI_BASE BCM2712_PI5_PERI_BASE
 #endif
 
 #define PAGE_SIZE 4096
@@ -191,6 +195,37 @@ static void *mmap_bcm_register(off_t register_offset) {
   }
   return result;
 }
+
+#if PI_VERSION == 5
+// Instead of /dev/mem, we can map /dev/gpiomem0, which allows to run as non-root
+static void *mmap_gpiomem_register() {
+  // This maps at 0x1f000d0000 (if seen from /dev/mem), but /dev/gpiomem0
+  // already has that offset.
+
+  int mem_fd;
+  if ((mem_fd = open("/dev/gpiomem0", O_RDWR|O_SYNC) ) < 0) {
+    perror("can't open /dev/gpiomem0: ");
+    fprintf(stderr, "You need to have gpio access permission.\n");
+    return NULL;
+  }
+
+  uint32_t *result =
+    (uint32_t*) mmap(NULL,                  // Any adddress in our space will do
+                     0x30000,               // need to map exactly this.
+                     PROT_READ|PROT_WRITE,  // Enable r/w on GPIO registers.
+                     MAP_SHARED,
+                     mem_fd,                // File to map
+                     0                      // gpiomem0 already starts there.
+                     );
+  close(mem_fd);
+
+  if (result == MAP_FAILED) {
+    fprintf(stderr, "mmap error %p\n", result);
+    return NULL;
+  }
+  return result;
+}
+#endif
 
 void initialize_gpio_for_output(volatile uint32_t *gpio_registerset, int bit) {
   *(gpio_registerset+(bit/10)) &= ~(7<<((bit%10)*3));  // prepare: set as input
@@ -528,15 +563,65 @@ static int usage(const char *prog) {
   fprintf(stderr, "Test operation\n"
           "== Baseline tests, using CPU directly ==\n"
           "1 - CPU: Writing to GPIO directly in tight loop\n"
+#if PI_VERSION != 5
           "2 - CPU: reading word from memory, write masked to GPIO set/clr.\n"
           "3 - CPU: reading prepared set/clr from memory, write to GPIO.\n"
           "4 - CPU: reading prepared set/clr from UNCACHED memory, write to GPIO.\n"
           "\n== DMA tests, using DMA to pump data to ==\n"
           "5 - DMA: Single control block per set/reset GPIO\n"
-          "6 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.\n");
-  fprintf(stderr, "Compiled for peripheral base 0x%08X\n", PERI_BASE);
+          "6 - DMA: Sending a sequence of set/clear with one DMA control block and negative destination stride.\n"
+#endif
+          );
+  fprintf(stderr, "Compiled for peripheral base 0x%08"PRIu64"\n",
+          (uint64_t)(PERI_BASE));
   return 1;
 }
+
+
+#if PI_VERSION == 5
+void run_cpu_direct_5() {
+  static const off_t kIO_Bank    = 0x00000;
+  static const off_t kIO_CtrlOffset = 1;
+  static const int kFunSelectRIO = 5;
+
+  static const off_t kRIO_Bank = 0x10000;
+  static const off_t kRIO_OE   = 0x4;
+  static const off_t kRIO_Set  = 0x2000;
+  static const off_t kRIO_Clr  = 0x3000;
+
+  static const off_t kPads_Bank = 0x20000 + 0x04;  // 0x00 is voltage select.
+
+  // Prepare GPIO
+  volatile void *gpio_mem = mmap_gpiomem_register();
+
+  // Configure gpio for registered IO
+  volatile uint32_t *const io_bank = gpio_mem + kIO_Bank;
+  io_bank[2 * TOGGLE_GPIO + kIO_CtrlOffset] = kFunSelectRIO;
+
+  // Tell pads _not_ to disable output.
+  // Page 33 of Raspberrypi Pi RP1 Peripherals doc. OD and IE 7:6
+  volatile uint32_t *const pads_bank = gpio_mem + kPads_Bank;
+  pads_bank[TOGGLE_GPIO] = (0b00 << 6);  // no output disable + no input enable
+
+  // Also tell RIO to enable output. No documentation, concluded from
+  // reading gpiochip_rp1.c
+  *((uint32_t*)(gpio_mem + kRIO_Bank + kRIO_OE)) = (1 << TOGGLE_GPIO);
+
+  // Note, the RP1 chip also has a directly set and xor mode, which is neat.
+  // To be comparable with the other implemented examples, let's use
+  // set/clear (no measured difference anyway).
+  volatile uint32_t *const set_reg = gpio_mem + kRIO_Bank + kRIO_Set;
+  volatile uint32_t *const clr_reg = gpio_mem + kRIO_Bank + kRIO_Clr;
+
+  // Do it. Endless loop, directly setting.
+  printf("1) CPU: Writing to GPIO directly in tight loop\n"
+         "== Press Ctrl-C to exit.\n");
+  for (;;) {
+    *set_reg = (1<<TOGGLE_GPIO);
+    *clr_reg = (1<<TOGGLE_GPIO);
+  }
+}
+#endif
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
@@ -545,8 +630,13 @@ int main(int argc, char *argv[]) {
 
   switch (atoi(argv[1])) {
   case 1:
+#if PI_VERSION == 5
+    run_cpu_direct_5();
+#else
     run_cpu_direct();
+#endif
     break;
+#if PI_VERSION != 5  // not implemented for 5 yet
   case 2:
     run_cpu_from_memory_masked();
     break;
@@ -562,6 +652,7 @@ int main(int argc, char *argv[]) {
   case 6:
     run_dma_multi_transfer_per_cb();
     break;
+#endif
   default:
     return usage(argv[0]);
   }

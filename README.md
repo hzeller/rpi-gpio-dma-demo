@@ -8,12 +8,13 @@ I provide the code in [gpio-dma-test.c](./gpio-dma-test.c) to the public domain.
 use DMA you need the mailbox implementation; for that note the Broadcom copyright header
 with permissive license in [mailbox.h](./mailbox.h).
 
-You can compile this for Raspberry Pi 1 or 2 and 3 by passing the `PI_VERSION`
+You can compile this for Raspberry Pi 1..5 by passing the `PI_VERSION`
 variable when compiling
 
      PI_VERSION=1 make
      PI_VERSION=2 make  # works for Pi 2 and 3
      PI_VERSION=4 make  # works for Pi 4
+     PI_VERSION=5 make  # preliminary Pi 5 testing (only example 1 works)
 
 The resulting program gives you a set of 6 experiments to conduct. By default, it toggles
 GPIO 14 (which is pin 8 on the Raspberry Pi header).
@@ -79,6 +80,12 @@ Raspberry Pi 1               | Raspberry Pi 2                | Raspberry Pi 3   
 
 The limited resolution in the 100ns range of the scope did not read the frequency correctly
 for the Pi 3 (so it only shows 58.8Mhz above) but if we zoom in, we see the 65.8Mhz
+
+Preliminary measurements with the Pi 5 shows that it is slower than even the
+Raspberry Pi 1: The Raspberry Pi 5 only reaches about **20Mhz**.
+This is probably due to the GPIO not handled anymore by the
+processor directly, but by the external RP1 peripheral chip that is connected
+with a PCIe lane.
 
 ![](img/rpi3-direct-loop-zoom.png)
 
